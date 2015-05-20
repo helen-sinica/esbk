@@ -16,6 +16,7 @@ write.csv(range, "range.csv", fileEncoding="UTF-8", row.names=F)
 x <- aggregate(serv.sec~brh, data = etab, FUN="mean")
 
 
+# 分行當天的服務時間(<700為主)
 p.serv.sec <- function(brh.code="0679", date="2014-10-01"){
     y <- etab[etab$brh==brh.code&etab$in.dt==date, c("tkt.no", "serv.sec")]    
     y$tkt.no <- as.integer(y$tkt.no)
@@ -42,8 +43,10 @@ date="2015-02-13"
 View(etab[etab$tkt.no=="0700",])
 View(etab[etab$tkt.no=="0800",])
 View(etab[etab$tkt.no=="0900",])
+View(etab[etab$tkt.no=="0950",])
 View(etab[etab$tkt.no=="1000",])
 
+# 分行當天的叫號情況（表）
 seg.etab <- function(brh.code="0912", date="2015-02-16"){
     y <- etab[etab$brh==brh.code&etab$in.dt==date,] 
     y$tkt.no <- as.integer(y$tkt.no)
