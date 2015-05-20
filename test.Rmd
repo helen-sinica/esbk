@@ -1,0 +1,274 @@
+---
+title: "E.Sun Data First Peek"
+author: "Helen Chang"
+output:
+  ioslides_presentation:
+    transition: faster
+---
+
+
+## Datasets  
+- ETAB  
+- Call Center Inbound  
+
+
+## Data Cleaning  
+- Change encoding from cp950 to UTF-8  
+- Trim white-space  
+- Rename columns  
+
+
+# ETAB
+
+
+## ETAB  
+- Currently is counted by ticket number (not exactly the amount of people)
+```{r echo=FALSE, results='hide', cache=TRUE}
+library(data.table)
+library(stringr)
+library(plyr)
+is.windows <- function() .Platform$OS.type=="windows"
+ifelse(is.windows(), setwd("D:/E-sun"), setwd('/home/esunb/Helen/'))
+# ifelse(is.windows(), f.name <- "ETABS0.D", f.name <- "cleaned_ETAB.csv")
+f.name <- "cleaned_ETAB.csv"
+# getwd()
+
+# write.csv(etab, "cleaned_ETAB.csv", fileEncoding="UTF-8", row.names=F)
+etab <- read.csv(f.name, fileEncoding = "UTF-8", 
+                 colClasses = c("character", "character", "character", "character",
+                                "character", "character", "character", "integer",
+                                "integer", "integer", "integer", "character", 
+                                "character", "character", "character"))
+etab$in.dtm <- strptime(etab$in.dtm, format = "%Y-%m-%d %H:%M:%S")
+
+brh.geo <- read.csv("brh.geo.u.csv", fileEncoding = "UTF-8",
+                   colClasses = c("character", "character", "character", "character", 
+                                  "character"))
+for(x in 2:6) {
+    brh.geo[[x]] <- str_trim(brh.geo[[x]])
+}
+colnames(brh.geo) <- c("brh", "brh.name", "brh.zip", "brh.addr", "brh.lat", "brh.lng")
+```
+- `r length(unique(etab$clerk.card))` clerks among `r length(unique(etab$brh)) ` branches  
+- The columns in ETAB (cleaned):  
+```{r echo=FALSE, cache=TRUE}
+colnames(etab)
+```  
+
+
+## Total Tickets by Date  
+- hoildays instered
+```{r echo=FALSE, cache=TRUE}
+t.in.dt <- data.frame(table(etab$in.dt))
+colnames(t.in.dt)[1] <- "in.dt"
+t.in.dt$in.dt <- as.Date(as.character(t.in.dt$in.dt))
+seq <- seq(as.Date("2014-10-01"), as.Date("2015-03-31"), by = "day")
+tmp <- data.frame(in.dt = seq[!(seq %in% t.in.dt$in.dt)], Freq = NA)
+t.in.dt <- rbind(t.in.dt, tmp)
+t.in.dt <- t.in.dt[order(t.in.dt$in.dt),]
+
+par(mar = c(8,4,2,2))
+plot(t.in.dt$Freq, type = "h", ylab = "Amount of tickets", xlab = "", xaxt = "n")
+xaxt.tick <- seq(6, by = 7, length.out = 26)
+axis(1, at = xaxt.tick, labels = as.character(t.in.dt$in.dt)[xaxt.tick], las = 2)
+```  
+
+
+## Mean Tickets by Weekdays
+```{r echo=FALSE, cache=TRUE}
+# plot(etab$etab$in.dtm$wday), type = "h", xaxt = "n", xlab = "Weekdays", ylab = "Total tickets")
+c.brh <- count(etab, vars=c("brh", "in.dt"))
+c.brh$wday <- strptime(c.brh$in.dt, "%Y-%m-%d")$wday
+boxplot(c.brh$freq ~ c.brh$wday, ylab = "Average amount of tickets", xaxt = "n")
+axis(1, at = 1:5, labels = c("Mon", "Tue", "Wed", "Thr", "Fri"))
+```  
+
+
+## Total Tickets Every Half-hour  
+- Time blocks (0-48) were transformed to (0-24)  
+```{r echo=FALSE, cache=TRUE}
+# sta <- strptime("2015-03-30", format = "%Y-%m-%d")
+# end <- strptime("2015-03-31", format = "%Y-%m-%d")
+# s <- strftime(seq(sta, end, by = "1 hour"), format = "%H:%M")[-25]
+
+t.tm.blk <- table(etab$tm.blk)
+dimnames(t.tm.blk) <- list((1:48)/2)
+barplot(t.tm.blk, xlab = "Every 30-mins",
+        ylab = "Total tickets", space = 1)
+```  
+
+
+## Total Tickets Every Half-hour  
+- It seemed the time stamps were contaminated  
+- Need further examination
+```{r echo=FALSE, cache=TRUE}
+t.tm.blk
+```  
+
+
+## Daily Tickets of Branches (Rank)  
+```{r echo=FALSE, cache=TRUE}
+# c.brh <- count(etab, vars=c("brh", "in.dt"))
+avg.tkt.brh <- aggregate(freq~brh, data=c.brh, mean)
+colnames(avg.tkt.brh)[2] <- "mean"
+avg.tkt.brh$sd <- aggregate(freq~brh, data=c.brh, sd)[, 2]
+avg.tkt.brh <- avg.tkt.brh[order(avg.tkt.brh$mean, decreasing=T), ]
+avg.tkt.brh <- join(brh.geo[, c(1, 2)], avg.tkt.brh, by="brh", type="right")
+colnames(avg.tkt.brh)[3:4] <- c("avg.tkt", "sd.tkt")
+avg.tkt.brh <- data.table(avg.tkt.brh)
+avg.tkt.brh
+```  
+
+Summary:
+```{r echo=FALSE, cache=TRUE}
+summary(avg.tkt.brh$avg.tkt)
+```  
+
+
+## Ticket No. in Total  
+- The "skipped ticket" is still included
+```{r echo=FALSE, cache=TRUE}
+plot(table(etab$tkt.no), ylab="Amount of tikets", xlab="Ticket no.")
+```  
+
+
+
+## Customer Types  
+- Tkts of each customer groups:  
+```{r echo=FALSE, cache=TRUE}
+table(etab$cu.grp)
+```  
+- Tkts of each catogories:  
+```{r echo=FALSE, cache=TRUE}
+table(etab$sale.no)
+```  
+
+>- A = 一般收付 + VVIP + VIP;  
+     1~700 (GRP1) + 901~950 (GRP4) + 951~999 (GRP5)
+>- B = 外匯服務：701~800 (GRP2);  
+>- C = 服務中心：801~900 (GRP3)
+
+
+## Waiting and Service Time  
+```{r}
+summary(etab$wait.sec)
+summary(etab$serv.sec)
+```  
+
+
+## Service Time  
+```{r echo=FALSE, cache=TRUE}
+serv.sec <- table(etab$serv.sec)
+plot(serv.sec, xlab="Service time (sec)", ylab ="Amount of tickets")
+```  
+
+
+## Service Time  
+```{r echo=FALSE, cache=TRUE}
+serv.sec.0to1hr <- table(etab$serv.sec[etab$serv.sec>0&etab$serv.sec<=3600])
+plot(serv.sec.0to1hr[10:730], xaxt = "n", xlab="Service time (sec)", ylab ="Amount of tickets")
+axis(1, at=0:720, labels=10:730)
+```  
+
+
+## Waiting Time  
+```{r echo=FALSE, cache=TRUE}
+wait.sec <- table(etab$wait.sec)
+plot(wait.sec, xlab="Service time (sec)", ylab ="Amount of tickets")
+```  
+
+
+## Waiting Time  
+```{r echo=FALSE, cache=TRUE}
+wait.tm.0to1hr <- table(etab$wait.sec[etab$wait.sec>=0&etab$wait.sec<3600])
+plot(wait.tm.0to1hr[1:720], xaxt = "n", xlab="Waiting time (sec)", ylab ="Amount of tickets")
+axis(1, at=1:720, labels=1:720)
+```  
+
+
+## Later-on Analysis  
+- check the contanminated time span  
+- filter out the skipped tkts  
+- customer/datetime/branch/clerk  
+- ...and so on  
+
+
+
+# Call Center Inbound  
+
+
+## Call Center Inbound  
+```{r echo=FALSE, results='hide', cache=TRUE}
+f.name <- "cleaned_call.csv"
+call <- fread(f.name, data.table=F)
+setnames(call, c("act.id", "seq.no", "cu.id", "cu.id.md5", "call.dt", "opr.id", 
+                 "opr.id.md5", "rsn.id1", "rsn.1", "rsn.id2", "rsn.2", 
+                 "rsn.id3", "rsn.3", "call.type", "type.descr"))
+call$call.dt <- strptime(call$call.dt, format="%Y-%m-%d")
+```  
+- `r length(unique(call$cu.id.md5))` customers called  
+- With `r length(unique(call$opr.id.md5))` operators  
+- The columns in call-center-inbound (cleaned):  
+```{r echo=FALSE, cache=TRUE}
+colnames(call)
+```
+
+
+## Calls by Date  
+```{r echo=FALSE, cache=TRUE}
+t.call.dt <- count(call, vars="call.dt")
+par(mar = c(8,4,2,2))
+barplot(t.call.dt$freq, ylab = "Amount of calls", names.arg = t.call.dt$call.dt)
+```  
+
+
+## Average Calls by Weekdays  
+```{r echo=FALSE, cache=TRUE}
+t.call.dt$wday <- t.call.dt$call.dt$wday
+# a.call.wday <- aggregate(freq~wday, data= t.call.dt, mean)
+boxplot(t.call.dt$freq ~ t.call.dt$wday, ylab = "Average amount of calls", xaxt = "n")
+axis(1, at = 1:7, labels = c("Sun", "Mon", "Tue", "Wed", "Thr", "Fri", "Sat"))
+```  
+
+
+## Call-in Reasons (Rank)  
+- In `r length(unique(call$rsn.id1))` catogories:
+```{r echo=FALSE, cache=TRUE}
+t.call.rsn <- table(call$rsn.id1)
+t.call.rsn
+```  
+
+
+
+## Call-in Reasons (Rank)  
+- M: 信用卡帳務問題  
+- N: 信用卡製卡/掛失/授權/使用詢問  
+- AD: 卡片附加優惠(保險/停車/貴賓室/道救)  
+```{r echo=FALSE, cache=TRUE}
+plot(t.call.rsn)
+```  
+
+
+## Call-in Reasons (Rank)  
+- M: 信用卡帳務問題 **(帳單查詢、繳款查詢)**  
+- N: 信用卡製卡/掛失/授權/使用詢問 **(額度查詢)**  
+- AD: 卡片附加優惠(保險/停車/貴賓室/道救)  
+```{r echo=FALSE, cache=TRUE}
+plot(table(call$rsn.id2))
+```  
+ 
+
+
+## Call type  
+```{r cache=TRUE}
+table(call$call.type)
+```  
+
+
+## Later-on Analysis  
+- bind with customer type analysis  
+- cost analysis  
+- ...and so on  
+
+
+# Thank you
