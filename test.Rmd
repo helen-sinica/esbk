@@ -1,3 +1,70 @@
+
+## Mean Waiting Time of Each Group
+```{r echo=FALSE, cache=TRUE}
+m.wtm.grp <- aggregate(wait.sec ~ in.dt + cu.grp, data=etab, mean)
+par(mar = c(8,4,2,2))
+boxplot(m.wtm.grp$wait.sec ~ m.wtm.grp$cu.grp, ylab = "Average amount of tickets", xaxt = "n")
+```
+
+
+
+## Abnormal Branch Behavior (15secs)  
+```{r echo=FALSE, cache=TRUE}
+serv.lt15 <- etab[etab$serv.sec<=15, ]
+serv.mt15 <- etab[etab$serv.sec>15, ]
+
+brh.serv.sec <- data.frame(aggregate(serv.sec~brh, data = serv.lt15, count))
+
+brh.serv.sec <- data.table(brh = count(serv.lt15, vars = "brh")$brh,
+                           serv.lt15 = count(serv.lt15, vars = "brh")$freq,
+                           serv.mt15 = count(serv.mt15, vars = "brh")$freq,
+                           serv.total = count(etab, vars = "brh")$freq)
+brh.serv.sec[,lt15.pct:=round(serv.lt15*100/serv.total, 1)]
+brh.serv.sec[,mt15.pct:=round(serv.mt15*100/serv.total, 1)]
+brh.serv.sec <- brh.serv.sec[order(brh.serv.sec$lt15.pct, decreasing=T),]
+
+x <- aggregate(serv.sec~brh, data = etab, FUN="mean")
+x <- x[order(x$serv.sec),]
+
+brh.serv.sec <- join(brh.serv.sec, x, by = "brh")
+
+
+
+brh.serv.sec <- data.frame(in.dt = count(serv.lt15, vars = c("in.dt", "cu.grp"))$in.dt,
+                           cu.grp = count(serv.lt15, vars = c("in.dt", "cu.grp"))$cu.grp,                           
+                           serv.lt15 = count(serv.lt15, vars = c("in.dt", "cu.grp"))$freq,
+                           serv.mt15 = count(serv.mt15, vars = c("in.dt", "cu.grp"))$freq,
+                           serv.total = count(etab, vars = c("in.dt", "cu.grp"))$freq)
+
+
+```  
+
+
+## Abnormal Branch Behavior (5sec)  
+```{r echo=FALSE, cache=TRUE}
+serv.lt05 <- etab[etab$serv.sec<=5, ]
+serv.mt05 <- etab[etab$serv.sec>5, ]
+
+brh.serv.sec <- data.frame(aggregate(serv.sec~brh, data = serv.lt05, count))
+
+brh.serv.sec <- data.table(brh = count(serv.lt05, vars = "brh")$brh,
+                           serv.lt05 = count(serv.lt05, vars = "brh")$freq,
+                           serv.mt05 = count(serv.mt05, vars = "brh")$freq,
+                           serv.total = count(etab, vars = "brh")$freq)
+brh.serv.sec[,lt05.pct:=round(serv.lt05*100/serv.total, 1)]
+brh.serv.sec[,mt05.pct:=round(serv.mt05*100/serv.total, 1)]
+brh.serv.sec <- brh.serv.sec[order(brh.serv.sec$lt05.pct, decreasing=T),]
+
+x <- aggregate(serv.sec~brh, data = etab, FUN="mean")
+x <- x[order(x$serv.sec),]
+
+brh.serv.sec <- join(brh.serv.sec, x, by = "brh")
+```  
+
+
+## Older test  
+
+
 ## Mean Tickets by Date  
 - hoildays instered
 ```{r echo=FALSE, cache=TRUE}
@@ -7,4 +74,89 @@ par(mar = c(8,4,2,2))
 boxplot(c.brh$freq ~ c.brh$mday, ylab = "Average amount of tickets", xaxt = "n")
 xaxt.tick <- seq(6, by = 7, length.out = 26)
 axis(1, at = xaxt.tick, labels = as.character(t.in.dt$in.dt)[xaxt.tick], las = 2)
+```  
+
+
+## Mean Tickets by Weekdays
+```{r echo=FALSE, cache=TRUE}
+# c.brh.cu <- count(etab, vars=c("brh", "in.dt", "cu.grp"))
+c.brh.cu$wday <- strptime(c.brh.cu$in.dt, "%Y-%m-%d")$wday
+boxplot(c.brh.cu$freq ~ c.brh.cu$wday, ylab = "Average amount of tickets", xaxt = "n")
+axis(1, at = 1:5, labels = c("Mon", "Tue", "Wed", "Thr", "Fri"))
+
+c1.brh.cu <- c.brh.cu[c.brh.cu$cu.grp=="GRP1",]
+boxplot(c1.brh.cu$freq ~ c1.brh.cu$wday, ylab = "Average amount of tickets", xaxt = "n")
+
+c2.brh.cu <- c.brh.cu[c.brh.cu$cu.grp=="GRP2",]
+boxplot(c2.brh.cu$freq ~ c2.brh.cu$wday, ylab = "Average amount of tickets", xaxt = "n")
+
+c3.brh.cu <- c.brh.cu[c.brh.cu$cu.grp=="GRP3",]
+boxplot(c3.brh.cu$freq ~ c3.brh.cu$wday, ylab = "Average amount of tickets", xaxt = "n")
+
+c4.brh.cu <- c.brh.cu[c.brh.cu$cu.grp=="GRP4",]
+boxplot(c4.brh.cu$freq ~ c4.brh.cu$wday, ylab = "Average amount of tickets", xaxt = "n")
+
+c5.brh.cu <- c.brh.cu[c.brh.cu$cu.grp=="GRP5",]
+boxplot(c5.brh.cu$freq ~ c5.brh.cu$wday, ylab = "Average amount of tickets", xaxt = "n")
+```  
+
+
+## Total Tickets Every Half-hour  
+- Time blocks (0-48) were transformed to (0-24)  
+```{r echo=FALSE, cache=TRUE}
+# sta <- strptime("2015-03-30", format = "%Y-%m-%d")
+# end <- strptime("2015-03-31", format = "%Y-%m-%d")
+# s <- strftime(seq(sta, end, by = "1 hour"), format = "%H:%M")[-25]
+
+t.tm.blk <- table(etab$tm.blk)
+dimnames(t.tm.blk) <- list((1:48)/2)
+barplot(t.tm.blk, xlab = "Every 30-mins",
+        ylab = "Total tickets", space = 1)
+```  
+
+
+## Total Tickets Every Half-hour  
+- It seemed the time stamps were contaminated  
+- Need further examination
+```{r echo=FALSE, cache=TRUE}
+t.tm.blk
+```  
+
+
+## Daily Tickets of Branches (Rank)  
+```{r echo=FALSE, cache=TRUE}
+avg.tkt.brh <- aggregate(freq~brh, data=c.brh, mean)
+colnames(avg.tkt.brh)[2] <- "mean"
+avg.tkt.brh$sd <- aggregate(freq~brh, data=c.brh, sd)[, 2]
+avg.tkt.brh <- avg.tkt.brh[order(avg.tkt.brh$mean, decreasing=T), ]
+avg.tkt.brh <- join(brh.geo[, c(1, 2)], avg.tkt.brh, by="brh", type="right")
+colnames(avg.tkt.brh)[3:4] <- c("avg.tkt", "sd.tkt")
+avg.tkt.brh <- data.table(avg.tkt.brh)
+avg.tkt.brh
+```  
+- Summary:
+```{r echo=FALSE, cache=TRUE}
+summary(avg.tkt.brh$avg.tkt)
+```  
+
+
+## Waiting and Service Time  
+```{r}
+summary(etab$wait.sec)
+summary(etab$serv.sec)
+```  
+
+
+## Service Time  
+```{r echo=FALSE, cache=TRUE}
+serv.sec <- table(etab$serv.sec)
+plot(serv.sec, xlab="Service time (sec)", ylab ="Amount of tickets")
+```  
+
+
+## Service Time  
+```{r echo=FALSE, cache=TRUE}
+serv.sec.0to1hr <- table(etab$serv.sec[etab$serv.sec>0&etab$serv.sec<=3600])
+plot(serv.sec.0to1hr[10:730], xaxt = "n", xlab="Service time (sec)", ylab ="Amount of tickets")
+axis(1, at=0:720, labels=10:730)
 ```  
