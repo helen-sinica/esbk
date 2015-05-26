@@ -32,7 +32,7 @@ etab <- read.csv(f.name, fileEncoding = "UTF-8",
                                 "character", "character", "character"))
 etab$in.dtm <- strptime(etab$in.dtm, format = "%Y-%m-%d %H:%M:%S")
 
-brh.geo <- read.csv("brh.geo.u.csv", fileEncoding = "UTF-8",
+brh.geo <- read.csv("brh.addr.csv", fileEncoding = "UTF-8",
                    colClasses = c("character", "character", "character", "character", 
                                   "character"))
 for(x in 2:6) {
