@@ -22,8 +22,9 @@ brh.geo <- fread("brh.addr.csv", data.table=F, colClasses = c("character", "char
 x <- fread("brh.price.raw.csv")
 i <- x[,.(brh.id, unit.10k.pr)]
 # calcuate the mean price without outliers(1.5*IQR)
-y <- i[,.(brh.hm.pri=mean(unit.10k.pr[!unit.10k.pr %in% boxplot.stats(unit.10k.pr)])), by=brh.id]
+y <- i[,.(brh.hm.pri=round(mean(unit.10k.pr[!unit.10k.pr %in% boxplot.stats(unit.10k.pr)]), 2)), by=brh.id]
 y <- join(brh.geo, y, by="brh.id")
+y <- y[, c("brh.id", "brh.name", "brh.hm.pri", "brh.zip", "brh.addr", "brh.lat", "brh.lng")]
 write.csv(y, "branch_home_price.csv", row.names=F)
 
 # 2 Parse the html (loop by brh.code)
